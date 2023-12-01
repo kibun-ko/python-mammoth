@@ -446,29 +446,44 @@ def _create_reader(numbering, content_types, relationships, styles, docx_file, f
             alt_text = properties.get("descr")
         else:
             alt_text = properties.get("title")
-        blips = element.find_children("a:graphic") \
+        pic_elements = element.find_children("a:graphic") \
             .find_children("a:graphicData") \
-            .find_children("pic:pic") \
-            .find_children("pic:blipFill") \
+            .find_children("pic:pic")
+        blips = pic_elements.find_children("pic:blipFill") \
             .find_children("a:blip")
-        return _read_blips(blips, alt_text)
+        size_exts = pic_elements.find_children("pic:spPr") \
+            .find_children("a:xfrm") \
+            .find_children("a:ext")
+        attributes = lists.map(lambda ext: ext.attributes, size_exts)
+        if attributes:
+            size_x = attributes[0].get("cx")
+            size_y = attributes[0].get("cy")
+        else:
+            size_x = None
+            size_y = None
+        if size_x:
+            size_x = int(size_x)
+        if size_y:
+            size_y = int(size_y)
+        return _read_blips(blips, alt_text, size_x, size_y)
 
-    def _read_blips(blips, alt_text):
-        return _ReadResult.concat(lists.map(lambda blip: _read_blip(blip, alt_text), blips))
+    def _read_blips(blips, alt_text, size_x, size_y):
+        return _ReadResult.concat(lists.map(lambda blip: _read_blip(blip, alt_text, size_x, size_y), blips))
 
-    def _read_blip(element, alt_text):
+    def _read_blip(element, alt_text, size_x, size_y):
         blip_image = _find_blip_image(element)
 
         if blip_image is None:
             warning = results.warning("Could not find image file for a:blip element")
             return _empty_result_with_message(warning)
         else:
-            return _read_image(blip_image, alt_text)
+            return _read_image(blip_image, alt_text, size_x, size_y)
 
-    def _read_image(image_file, alt_text):
+    def _read_image(image_file, alt_text, size_x, size_y):
         image_path, open_image = image_file
         content_type = content_types.find_content_type(image_path)
-        image = documents.image(alt_text=alt_text, content_type=content_type, open=open_image)
+        image = documents.image(alt_text=alt_text, content_type=content_type, open=open_image, size_x=size_x,
+                                size_y=size_y)
 
         if content_type in ["image/png", "image/gif", "image/jpeg", "image/svg+xml", "image/tiff"]:
             messages = []

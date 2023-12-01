@@ -95,6 +95,8 @@ class Tab(Element):
 @cobble.data
 class Image(Element):
     alt_text = cobble.field()
+    size_x = cobble.field()
+    size_y = cobble.field()
     content_type = cobble.field()
     open = cobble.field()
 
