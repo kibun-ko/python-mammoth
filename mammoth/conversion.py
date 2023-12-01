@@ -16,6 +16,7 @@ def convert_document_element_to_html(element,
         convert_image=None,
         id_prefix=None,
         output_format=None,
+        ignore_underline=True,
         ignore_empty_paragraphs=True):
 
     if style_map is None:
@@ -41,6 +42,7 @@ def convert_document_element_to_html(element,
         style_map=style_map,
         convert_image=convert_image,
         id_prefix=id_prefix,
+        ignore_underline=ignore_underline,
         ignore_empty_paragraphs=ignore_empty_paragraphs,
         note_references=[],
         comments=comments,
@@ -62,11 +64,12 @@ class _ConversionContext(object):
 
 
 class _DocumentConverter(documents.element_visitor(args=1)):
-    def __init__(self, messages, style_map, convert_image, id_prefix, ignore_empty_paragraphs, note_references, comments):
+    def __init__(self, messages, style_map, convert_image, id_prefix, ignore_empty_paragraphs, ignore_underline, note_references, comments):
         self._messages = messages
         self._style_map = style_map
         self._id_prefix = id_prefix
         self._ignore_empty_paragraphs = ignore_empty_paragraphs
+        self._underline_default = "u" if not ignore_underline else None
         self._note_references = note_references
         self._referenced_comments = []
         self._convert_image = convert_image
@@ -105,7 +108,6 @@ class _DocumentConverter(documents.element_visitor(args=1)):
         html_path = self._find_html_path_for_paragraph(paragraph)
         return html_path.wrap(children)
 
-
     def visit_run(self, run, context):
         nodes = lambda: self._visit_all(run.children, context)
         paths = []
@@ -116,7 +118,7 @@ class _DocumentConverter(documents.element_visitor(args=1)):
         if run.is_strikethrough:
             paths.append(self._find_style_for_run_property("strikethrough", default="s"))
         if run.is_underline:
-            paths.append(self._find_style_for_run_property("underline"))
+            paths.append(self._find_style_for_run_property("underline", default=self._underline_default))
         if run.vertical_alignment == documents.VerticalAlignment.subscript:
             paths.append(html_paths.element(["sub"], fresh=False))
         if run.vertical_alignment == documents.VerticalAlignment.superscript:
